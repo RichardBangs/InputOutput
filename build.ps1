@@ -42,7 +42,7 @@ if ($Package) {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md'),(Join-Path $projectRoot 'USAGE.md'),(Join-Path $projectRoot 'TESTING.md'),(Join-Path $projectRoot 'VERIFICATION.md'),(Join-Path $projectRoot 'LICENSE'),(Join-Path $projectRoot 'THIRD_PARTY_NOTICES.md') -Destination $outputDirectory -Force
     $screenshotDirectory = Join-Path $outputDirectory 'assets\screenshots'
     New-Item -ItemType Directory -Force -Path $screenshotDirectory | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets\screenshots') -Filter '*.jpg' | Copy-Item -Destination $screenshotDirectory -Force
+    Get-ChildItem -LiteralPath (Join-Path $projectRoot 'assets\screenshots') -Filter '*.png' | Copy-Item -Destination $screenshotDirectory -Force
     Compress-Archive -LiteralPath $applicationPath,(Join-Path $outputDirectory 'README.md'),(Join-Path $outputDirectory 'USAGE.md'),(Join-Path $outputDirectory 'TESTING.md'),(Join-Path $outputDirectory 'VERIFICATION.md'),(Join-Path $outputDirectory 'LICENSE'),(Join-Path $outputDirectory 'THIRD_PARTY_NOTICES.md'),(Join-Path $outputDirectory 'assets'),$licenseDirectory -DestinationPath (Join-Path $outputDirectory 'InputOutput-0.1.0-win64.zip') -Force
 }
 Get-Item -LiteralPath $applicationPath | Select-Object FullName,Length,LastWriteTime

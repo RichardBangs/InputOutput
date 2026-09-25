@@ -28,6 +28,7 @@ Switch to each saved display preset, including a newly captured or updated one, 
 - Close Settings: the app should remain in the tray. Reopen Settings and verify names, selected devices, order, and fallback settings survived.
 - Exit and reopen the app. Then sign out and back in when convenient to check startup.
 - Open and navigate the tray by keyboard. Check the panel on each screen, especially if Windows scaling differs between them.
+- Switch between monitors and the TV configured with different Windows scaling percentages. Check the switcher both left open during the change and reopened after being hidden: its text, icons and buttons should immediately match the destination screen's scale. Leave Settings open for another switch and check it also resizes correctly. An unsaved name edit should survive resizing.
 
 Some media and voice apps pin a specific device instead of following the Windows default. Set those apps to use the default device when testing routing.
 
