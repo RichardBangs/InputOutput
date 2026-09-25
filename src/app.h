@@ -6,7 +6,8 @@
 #include <memory>
 
 namespace io {
-constexpr UINT WM_TRAY = WM_APP + 1, WM_DEVICES = WM_APP + 2, WM_JOB = WM_APP + 3, WM_RELAYOUT = WM_APP + 5;
+constexpr UINT WM_TRAY = WM_APP + 1, WM_DEVICES = WM_APP + 2, WM_JOB = WM_APP + 3, WM_RELAYOUT = WM_APP + 5,
+               WM_OPENPOPUP = WM_APP + 6;
 struct WindowUi {
     UINT dpi = 96;
     HFONT font{}, smallFont{}, titleFont{}, iconFont{};
@@ -140,7 +141,7 @@ class App {
         : instance_(instance), folder_(std::move(folder)), noStartup_(noStartup), smoke_(smoke),
           uiSmoke_(uiSmoke) {}
     ~App();
-    int run(bool showSettings);
+    int run(bool showSettings, bool showPopup = false);
     LRESULT ownerMessage(UINT, WPARAM, LPARAM);
     LRESULT popupMessage(UINT, WPARAM, LPARAM);
     LRESULT settingsMessage(UINT, WPARAM, LPARAM);

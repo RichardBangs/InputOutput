@@ -39,6 +39,8 @@ Monitor, speaker, and microphone icons identify the three groups. Hover over an 
 
 Closing Settings leaves the app running. **Exit** in the tray panel closes it.
 
+You can also open the switcher directly with `InputOutput.exe --popup`, for example from a shortcut. It opens the existing instance when the app is already running.
+
 ## Data and recovery
 
 Normal settings are stored in `%LOCALAPPDATA%\InputOutput\settings.dat`, with the previous version in `settings.dat.bak`. Writes are atomic and include an integrity check. A bounded local log helps diagnose errors. **Settings → General → Open data folder** opens these files.

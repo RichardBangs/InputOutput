@@ -14,7 +14,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         args.emplace_back(argv[i]);
     LocalFree(argv);
     std::filesystem::path folder;
-    bool noStartup = false, settings = false, smoke = false, uiSmoke = false, selfTest = false,
+    bool noStartup = false, settings = false, popup = false, smoke = false, uiSmoke = false, selfTest = false,
          diagnostics = false;
     try {
         if (args.size() == 4 && args[0] == L"--watchdog")
@@ -26,6 +26,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 noStartup = true;
             else if (args[i] == L"--settings")
                 settings = true;
+            else if (args[i] == L"--popup")
+                popup = true;
             else if (args[i] == L"--ui-smoke") {
                 uiSmoke = true;
                 noStartup = true;
@@ -64,11 +66,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (GetLastError() == ERROR_ALREADY_EXISTS) {
             auto window = FindWindowW(L"InputOutput.Owner", ownerTitle.c_str());
             if (window)
-                PostMessageW(window, WM_APP + 4, 0, 0);
+                PostMessageW(window, popup ? WM_OPENPOPUP : WM_APP + 4, 0, 0);
             return 0;
         }
         App app(instance, folder, noStartup, smoke, uiSmoke);
-        return app.run(settings);
+        return app.run(settings, popup);
     } catch (const std::exception &e) {
         if (!folder.empty())
             log(folder, wide(e.what()));

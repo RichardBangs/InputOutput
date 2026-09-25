@@ -4,6 +4,10 @@
 
 Move from two monitors and speakers to your TV and headphones in a few clicks. InputOutput lives in the Windows notification area and lets you choose displays, audio output, and microphone independently—no need to save every possible combination.
 
+<img src="assets/screenshots/tray-icon.png" alt="InputOutput tray icon" width="24"> **Your setup, one tray icon away.**
+
+<img src="assets/screenshots/tray-switcher.png" alt="InputOutput's tray switcher above the Windows taskbar, with independent display, audio output and microphone choices" width="362">
+
 - **Your menu, your devices.** Show only the presets and devices you use, with names and ordering you choose.
 - **Save your screen setups.** Restore monitor layouts, resolution, refresh rate, rotation, and the primary screen. Saved setups stay applied, with recovery if a switch fails.
 - **Ready when you are.** Optional startup at sign-in, communication-device selection for calls, and fallback audio devices.

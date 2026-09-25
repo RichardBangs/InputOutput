@@ -375,7 +375,7 @@ void App::recoverAtLaunch() {
     }
 }
 
-int App::run(bool showSettingsFirst) {
+int App::run(bool showSettingsFirst, bool showPopupFirst) {
     theme_.refresh();
     std::filesystem::create_directories(folder_);
     const bool firstRun = !std::filesystem::exists(folder_ / L"settings.dat");
@@ -444,7 +444,9 @@ int App::run(bool showSettingsFirst) {
     }
     if (!notice_.empty())
         notifyError(notice_);
-    if (showSettingsFirst || firstRun)
+    if (showPopupFirst)
+        showPopup();
+    else if (showSettingsFirst || firstRun)
         showSettings();
     if (uiSmoke_)
         SetTimer(owner_, TimerSmoke, 700, nullptr);
@@ -491,6 +493,9 @@ LRESULT App::ownerMessage(UINT message, WPARAM w, LPARAM l) {
         return 0;
     case WM_APP + 4:
         showSettings();
+        return 0;
+    case WM_OPENPOPUP:
+        showPopup();
         return 0;
     case WM_TRAY:
         if (LOWORD(l) == NIN_SELECT || LOWORD(l) == NIN_KEYSELECT || LOWORD(l) == WM_CONTEXTMENU) {
