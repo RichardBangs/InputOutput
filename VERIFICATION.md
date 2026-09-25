@@ -1,0 +1,21 @@
+# Verification record — 25 September 2026
+
+Build: InputOutput 0.1.0, Windows x64, native C++20 using LLVM-MinGW 20260616.
+
+- 22 automated tests passed, including Unicode and binary settings round trips, truncated/corrupt files, mode-index validation, monitor identity remapping, clone groups, constrained source routing, atomic backups, recovery decisions, automatic completion after display verification, and a separate recovery process's acknowledgement and exit.
+- The executable is approximately 2 MiB; the portable ZIP also includes the README screenshots and detailed usage guide.
+- Import inspection found only Windows system DLLs and Windows' built-in Universal C Runtime.
+- Read-only discovery found the current two MSI monitors, Audioengine speakers, Arctis headphones and microphone, and the LG TV's disconnected HDMI endpoint.
+- Windows validated the remapped current display layout successfully (`SDC_VALIDATE`, result 0). No display layout was applied during this check.
+- Creating the Windows default-audio policy interface succeeded. Actual output and input switching was not exercised.
+- Native UI inspection verified display capture, rename/save, the audio-device list, and keyboard selection of a device for the menu. A tab repainting issue found during inspection was corrected. The user stopped further desktop inspection with Escape before the final visual recheck.
+- The latest settings revision uses a Windows-style sidebar, neutral backgrounds, white cards, rounded buttons and restrained blue accents, with Windows high-contrast colors retained. General now contains only the two options, Open data folder, a keyboard-accessible GitHub link, and the version line. The calls option has clearer wording. All 20 automated tests passed again. On-screen inspection verified Displays and General, the sidebar page change, the absence of the removed copy, and the GitHub link's accessible name and exact destination. Hardware defaults were not changed during this inspection.
+- In a five-second idle sample before the contrast revision, the measured CPU increase was 0 ms. Private memory was 2.67 MiB and the working set was 18.12 MiB. These are one local sample, not guaranteed maxima.
+- Test runs used isolated project data folders and disabled startup registration.
+- The compact layout reduces the settings client height from 550 to 442 logical pixels. Windows settings buttons share one header position on all device pages. Display presets now use list checkboxes, and all name fields have an inline Save icon with an accessible name and tooltip. Mouse and Space-key checkbox toggles were checked in an isolated settings copy; toggling off and on restored the exact original settings-file hash. Renaming with the Save icon was verified on screen. All four settings pages and arrow-key sidebar navigation were visually checked. The README screenshots were captured from this build. All 20 automated tests passed.
+
+- The display-switch bug fix removes the app's first-use confirmation countdown. The user's log showed three restorations by the app's watchdog, matching this path. Every saved preset is now kept automatically after Windows applies and verifies it; the recovery process then exits. The legacy confirmation field remains compatible with existing settings files but no longer controls switching. Recovery still handles failures, interrupted switches and stalled application of a layout.
+- Native UI regression checks passed for Minimise, click-away, Escape and close during a simulated busy switch, including verifying that the completion redraw does not reopen the popup. These checks did not change any display or audio device. All four settings pages also opened successfully.
+- The tray section headings now draw the same monitor, speaker and microphone icons used by Settings, retaining their native control names and adding hover tooltips. The native UI smoke and busy-dismissal checks passed again after this change.
+
+The remaining hardware acceptance checks are listed in TESTING.md: real display transitions staying applied beyond 35 seconds, audible output routing, microphone routing, HDMI reconnection, multi-screen DPI behavior, and Windows sign-in startup.
