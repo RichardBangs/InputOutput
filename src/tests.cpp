@@ -46,6 +46,12 @@ Snapshot fixture(unsigned screens = 2, bool clone = false) {
     }
     return s;
 }
+std::vector<AudioDevice> hdmiFixture() {
+    return {{L"old-tv", L"3 - LG TV SSCR2 (AMD audio)", eRender, DEVICE_STATE_UNPLUGGED, L"3 - LG TV SSCR2",
+             L"graphics-container", L"AMD audio", true},
+            {L"new-tv", L"2 - LG TV SSCR2 (AMD audio)", eRender, DEVICE_STATE_ACTIVE, L"2 - LG TV SSCR2",
+             L"graphics-container", L"AMD audio", true}};
+}
 } // namespace
 int runSelfTests(const std::filesystem::path &folder) {
     std::filesystem::create_directories(folder);
@@ -217,6 +223,133 @@ int runSelfTests(const std::filesystem::path &folder) {
         require(audioAvailable(devices, L"two"));
         require(!audioAvailable(devices, L"missing"));
     });
+    test("Renumbered HDMI output preserves menu labels, visibility, order and fallback", [&] {
+        Config c;
+        c.outputs = {{L"speakers", L"Speakers", true},
+                     {L"old-tv", L"Living room TV", false},
+                     {L"headphones", L"Headphones", true}};
+        c.inputs = {{L"mic", L"Microphone", true}};
+        c.outputFallback = L"old-tv";
+        c.inputFallback = L"mic";
+        c.displays.push_back({L"tv", L"TV", true, false, fixture(1)});
+        c.startup = c.calls = false;
+        auto expected = c;
+        expected.outputs[1].id = expected.outputFallback = L"new-tv";
+        auto devices = hdmiFixture();
+        auto changes = reconnectAudioChoices(c, devices);
+        require(changes.size() == 1 && changes.at(L"old-tv") == L"new-tv");
+        require(audioAvailable(devices, c.outputs[1].id));
+        require(encodeConfig(c) == encodeConfig(expected));
+        require(reconnectAudioChoices(c, devices).empty());
+        auto data = folder / L"hdmi-reconnect";
+        saveConfig(data, expected);
+        require(encodeConfig(loadConfig(data)) == encodeConfig(expected));
+    });
+    test("TV power cycle reconnects a saved endpoint again without creating another choice", [&] {
+        Config c;
+        c.outputs = {{L"old-tv", L"TV speakers", true}};
+        auto devices = hdmiFixture();
+        devices[1].state = DEVICE_STATE_NOTPRESENT;
+        require(reconnectAudioChoices(c, devices).empty());
+        require(!audioAvailable(devices, c.outputs[0].id));
+        devices[1].state = DEVICE_STATE_ACTIVE;
+        require(reconnectAudioChoices(c, devices).size() == 1);
+        devices[1].state = DEVICE_STATE_NOTPRESENT;
+        devices[0].state = DEVICE_STATE_ACTIVE;
+        require(reconnectAudioChoices(c, devices).size() == 1);
+        require(c.outputs.size() == 1 && c.outputs[0].id == L"old-tv");
+        require(c.outputs[0].name == L"TV speakers");
+    });
+    test("Multiple active HDMI matches leave a saved choice disconnected", [&] {
+        Config c;
+        c.outputs = {{L"old-tv", L"TV", true}};
+        auto devices = hdmiFixture();
+        auto duplicate = devices[1];
+        duplicate.id = L"second-tv";
+        devices.push_back(duplicate);
+        require(reconnectAudioChoices(c, devices).empty());
+        require(c.outputs[0].id == L"old-tv");
+    });
+    test("Two saved HDMI choices cannot claim the same replacement in either menu order", [&] {
+        Config c;
+        c.outputs = {{L"old-tv", L"First TV", true}, {L"second-old-tv", L"Second TV", false}};
+        auto devices = hdmiFixture();
+        auto duplicate = devices[0];
+        duplicate.id = L"second-old-tv";
+        devices.push_back(duplicate);
+        for (int order = 0; order < 2; ++order) {
+            auto before = encodeConfig(c);
+            require(reconnectAudioChoices(c, devices).empty());
+            require(encodeConfig(c) == before);
+            std::reverse(c.outputs.begin(), c.outputs.end());
+        }
+    });
+    test("An HDMI endpoint already configured separately is never claimed", [&] {
+        Config c;
+        c.outputs = {{L"old-tv", L"Old TV", true}, {L"new-tv", L"New TV", false}};
+        auto before = encodeConfig(c);
+        require(reconnectAudioChoices(c, hdmiFixture()).empty());
+        require(encodeConfig(c) == before);
+    });
+    const char *hdmiRejections[] = {"Active HDMI IDs are retained",
+                                    "Disabled HDMI IDs are retained",
+                                    "Missing old HDMI hardware metadata is not guessed from a menu name",
+                                    "Different HDMI device models are not interchangeable",
+                                    "Different HDMI hardware containers are not interchangeable",
+                                    "Different audio controllers are not interchangeable",
+                                    "Empty HDMI containers cannot identify a replacement",
+                                    "Empty HDMI descriptions cannot identify a replacement",
+                                    "Empty audio controllers cannot identify a replacement",
+                                    "Non-HDMI endpoints are not rebound",
+                                    "Microphones are not rebound",
+                                    "Disconnected replacements are not selectable"};
+    for (int scenario = 0; scenario < static_cast<int>(std::size(hdmiRejections)); ++scenario)
+        test(hdmiRejections[scenario], [&, scenario] {
+            Config c;
+            c.outputs = {{L"old-tv", L"2 - LG TV SSCR2 (AMD audio)", true}};
+            auto before = encodeConfig(c);
+            auto devices = hdmiFixture();
+            switch (scenario) {
+            case 0:
+                devices[0].state = DEVICE_STATE_ACTIVE;
+                break;
+            case 1:
+                devices[0].state = DEVICE_STATE_DISABLED;
+                break;
+            case 2:
+                devices.erase(devices.begin());
+                break;
+            case 3:
+                devices[1].description = L"2 - Different TV";
+                break;
+            case 4:
+                devices[1].containerId = L"other-container";
+                break;
+            case 5:
+                devices[1].controller = L"other-controller";
+                break;
+            case 6:
+                devices[0].containerId = devices[1].containerId = L"";
+                break;
+            case 7:
+                devices[0].description = devices[1].description = L"";
+                break;
+            case 8:
+                devices[0].controller = devices[1].controller = L"";
+                break;
+            case 9:
+                devices[0].hdmi = devices[1].hdmi = false;
+                break;
+            case 10:
+                devices[0].flow = devices[1].flow = eCapture;
+                break;
+            case 11:
+                devices[1].state = DEVICE_STATE_UNPLUGGED;
+                break;
+            }
+            require(reconnectAudioChoices(c, devices).empty());
+            require(encodeConfig(c) == before);
+        });
     test("Atomic persistence retains previous backup", [&] {
         auto data = folder / L"persistence";
         Config a;
@@ -328,6 +461,22 @@ void diagnose(const std::filesystem::path &folder) {
         for (auto &device : audioDevices(flow))
             out << (device.id == selected ? "* " : "  ") << utf8(device.name) << " ["
                 << utf8(deviceState(device.state)) << "]\n";
+    }
+    if (std::filesystem::exists(folder / L"settings.dat")) {
+        auto config = loadConfig(folder);
+        auto devices = audioDevices(eRender);
+        auto changes = reconnectAudioChoices(config, devices);
+        out << "\nSaved audio outputs (read-only reconnection preview):\n";
+        for (const auto &choice : config.outputs) {
+            auto found =
+                std::find_if(devices.begin(), devices.end(), [&](auto &d) { return d.id == choice.id; });
+            out << "  " << utf8(choice.name) << " ["
+                << utf8(deviceState(found == devices.end() ? DEVICE_STATE_NOTPRESENT : found->state)) << "]\n"
+                << "    Endpoint: " << utf8(choice.id) << "\n";
+        }
+        for (const auto &[oldId, newId] : changes)
+            out << "  Would reconnect: " << utf8(oldId) << " -> " << utf8(newId) << "\n";
+        out << "  " << changes.size() << " saved choice(s) would reconnect; settings not changed.\n";
     }
     out << "\nAudio policy interface creation: 0x" << std::hex
         << static_cast<unsigned long>(audioPolicyAvailable()) << std::dec << " (no device changed)\n";

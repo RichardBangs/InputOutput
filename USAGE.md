@@ -27,6 +27,8 @@ Each has its own page in the Settings sidebar. Check the devices you want in the
 
 Optionally choose a fallback device for each category. **Let Windows choose** is the default. A fallback is used only when it is available. Changing the display setup attempts to preserve the selected output and microphone when those devices remain available. HDMI audio becomes selectable once Windows reports it as available.
 
+Windows sometimes gives a TV a new audio endpoint when it reconnects. InputOutput follows a unique HDMI match using its hardware container, controller and device description, keeping your menu name, position and fallback choice. If the hardware details are missing or ambiguous, choose the available endpoint in Settings instead.
+
 **General → Also use selected audio devices for calls** makes each output or microphone selection update Windows' default communication device too. Calling apps that follow that Windows setting will use the selected device. Turning this off leaves the communication defaults unchanged when switching devices. Applications with their own explicit device preferences may keep using those devices. InputOutput never opens a microphone stream or records sound.
 
 **General → View on GitHub** opens the [project page](https://github.com/RichardBangs/InputOutput) in your default browser.

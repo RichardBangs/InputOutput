@@ -181,6 +181,27 @@ void App::refresh(bool display) {
         current_ = queryDisplays();
         available_ = queryDisplays(QDC_ALL_PATHS);
     }
+    if (!readOnly_) {
+        auto updated = config_;
+        auto replacements = reconnectAudioChoices(updated, outputs_);
+        if (!replacements.empty()) {
+            auto before = config_;
+            config_ = std::move(updated);
+            if (save(before)) {
+                if (auto found = replacements.find(wantedOutput_); found != replacements.end())
+                    wantedOutput_ = found->second;
+                // Keep an open Settings selection and unsaved name edit attached to
+                // the same saved choice when its Windows endpoint changes.
+                if (page_ == 1)
+                    for (auto &device : settingsDevices_)
+                        if (auto found = replacements.find(device.id); found != replacements.end())
+                            device.id = found->second;
+                for (const auto &[oldId, newId] : replacements)
+                    log(folder_, L"Reconnected HDMI audio menu entry: " + oldId + L" -> " + newId);
+                refreshSettingsDevices();
+            }
+        }
+    }
     std::wstring tip = L"InputOutput";
     auto o = deviceLabel(config_.outputs, currentOutput_), m = deviceLabel(config_.inputs, currentInput_);
     if (!o.empty())
@@ -421,16 +442,18 @@ int App::run(bool showSettingsFirst, bool showPopupFirst) {
     addTray();
     if (!smoke_) {
         recoverAtLaunch();
-        try {
-            refresh();
-        } catch (...) {
-            notifyError(exceptionText());
-        }
+        // Subscribe before the initial scan so a TV arriving during startup is not missed.
         if (SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_INPROC_SERVER,
                                        __uuidof(IMMDeviceEnumerator),
                                        reinterpret_cast<void **>(enumerator_.put())))) {
             notifications_ = new DeviceNotifications(owner_);
-            enumerator_->RegisterEndpointNotificationCallback(notifications_);
+            if (FAILED(enumerator_->RegisterEndpointNotificationCallback(notifications_)))
+                log(folder_, L"Audio notifications unavailable; devices will refresh when the menu opens.");
+        }
+        try {
+            refresh();
+        } catch (...) {
+            notifyError(exceptionText());
         }
     }
     if (firstRun && !readOnly_) {
@@ -516,9 +539,9 @@ LRESULT App::ownerMessage(UINT message, WPARAM w, LPARAM l) {
         return TRUE;
     case WM_TIMER:
         if (w == TimerRefresh) {
-            KillTimer(owner_, TimerRefresh);
             if (busy_)
                 return 0;
+            KillTimer(owner_, TimerRefresh);
             reconcileAudio();
             if (!busy_)
                 try {

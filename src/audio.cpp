@@ -1,3 +1,4 @@
+#include <initguid.h> // Instantiate the SDK audio property keys in this translation unit.
 #include "core.h"
 #include <audioclient.h>
 
@@ -34,6 +35,47 @@ std::wstring deviceId(IMMDevice *d) {
     CoTaskMemFree(id);
     return result;
 }
+std::wstring propertyString(IPropertyStore *properties, const PROPERTYKEY &key) {
+    PROPVARIANT value;
+    PropVariantInit(&value);
+    std::wstring result;
+    if (SUCCEEDED(properties->GetValue(key, &value)) && value.vt == VT_LPWSTR && value.pwszVal)
+        result = value.pwszVal;
+    PropVariantClear(&value);
+    return result;
+}
+std::wstring deviceContainer(IPropertyStore *properties) {
+    PROPVARIANT value;
+    PropVariantInit(&value);
+    GUID id{};
+    if (SUCCEEDED(properties->GetValue(PKEY_Device_ContainerId, &value))) {
+        if (value.vt == VT_CLSID && value.puuid)
+            id = *value.puuid;
+        else if (value.vt == VT_LPWSTR && value.pwszVal)
+            CLSIDFromString(value.pwszVal, &id);
+    }
+    PropVariantClear(&value);
+    if (IsEqualGUID(id, GUID_NULL))
+        return {};
+    wchar_t text[40]{};
+    StringFromGUID2(id, text, static_cast<int>(std::size(text)));
+    return text;
+}
+std::wstring hdmiDescription(const std::wstring &description) {
+    // Windows can renumber an HDMI sink ("3 - LG TV" becomes "2 - LG TV").
+    // Strip only that numeric prefix, never words or the user's chosen menu name.
+    auto digits = description.find_first_not_of(L"0123456789");
+    if (digits != 0 && digits != std::wstring::npos && description.compare(digits, 3, L" - ") == 0)
+        return description.substr(digits + 3);
+    return description;
+}
+bool sameHdmiDevice(const AudioDevice &a, const AudioDevice &b) {
+    // A container may represent the graphics card, so it is insufficient by itself.
+    return a.hdmi && b.hdmi && a.flow == eRender && b.flow == eRender && !a.containerId.empty() &&
+           a.containerId == b.containerId && !a.controller.empty() && a.controller == b.controller &&
+           !hdmiDescription(a.description).empty() &&
+           hdmiDescription(a.description) == hdmiDescription(b.description);
+}
 } // namespace
 std::vector<AudioDevice> audioDevices(EDataFlow flow) {
     ComPtr<IMMDeviceEnumerator> e;
@@ -54,12 +96,18 @@ std::vector<AudioDevice> audioDevices(EDataFlow flow) {
             continue;
         ComPtr<IPropertyStore> properties;
         if (SUCCEEDED(d->OpenPropertyStore(STGM_READ, properties.put()))) {
+            a.name = propertyString(properties.get(), PKEY_Device_FriendlyName);
             PROPVARIANT value;
             PropVariantInit(&value);
-            if (SUCCEEDED(properties->GetValue(PKEY_Device_FriendlyName, &value)) && value.vt == VT_LPWSTR &&
-                value.pwszVal)
-                a.name = value.pwszVal;
+            if (flow == eRender && SUCCEEDED(properties->GetValue(PKEY_AudioEndpoint_FormFactor, &value)) &&
+                value.vt == VT_UI4)
+                a.hdmi = value.ulVal == HDMI;
             PropVariantClear(&value);
+            if (a.hdmi) {
+                a.description = propertyString(properties.get(), PKEY_Device_DeviceDesc);
+                a.containerId = deviceContainer(properties.get());
+                a.controller = propertyString(properties.get(), PKEY_DeviceInterface_FriendlyName);
+            }
         }
         if (a.name.empty())
             a.name = L"Audio device";
@@ -71,6 +119,42 @@ std::vector<AudioDevice> audioDevices(EDataFlow flow) {
         return a.name < b.name;
     });
     return result;
+}
+std::map<std::wstring, std::wstring> reconnectAudioChoices(Config &config,
+                                                           const std::vector<AudioDevice> &devices) {
+    std::map<std::wstring, std::wstring> replacements;
+    std::map<std::wstring, unsigned> claims;
+    for (const auto &choice : config.outputs) {
+        auto old = std::find_if(devices.begin(), devices.end(), [&](auto &d) { return d.id == choice.id; });
+        // Keep working IDs and intentionally disabled devices. Without the old hardware
+        // metadata, a label alone is not enough evidence to redirect a saved choice.
+        if (old == devices.end() ||
+            (old->state != DEVICE_STATE_UNPLUGGED && old->state != DEVICE_STATE_NOTPRESENT))
+            continue;
+        const AudioDevice *match = nullptr;
+        for (const auto &device : devices) {
+            if (device.state != DEVICE_STATE_ACTIVE || !sameHdmiDevice(*old, device))
+                continue;
+            if (match) {
+                match = nullptr;
+                break;
+            }
+            match = &device;
+        }
+        if (!match || std::any_of(config.outputs.begin(), config.outputs.end(),
+                                  [&](auto &c) { return c.id == match->id; }))
+            continue;
+        replacements.emplace(choice.id, match->id);
+        ++claims[match->id];
+    }
+    // Never collapse two saved choices into one endpoint, regardless of menu order.
+    std::erase_if(replacements, [&](auto &entry) { return claims[entry.second] != 1; });
+    for (auto &choice : config.outputs)
+        if (auto found = replacements.find(choice.id); found != replacements.end())
+            choice.id = found->second;
+    if (auto found = replacements.find(config.outputFallback); found != replacements.end())
+        config.outputFallback = found->second;
+    return replacements;
 }
 std::wstring defaultAudio(EDataFlow flow, ERole role) {
     ComPtr<IMMDeviceEnumerator> e;

@@ -127,8 +127,13 @@ struct AudioDevice {
     std::wstring id, name;
     EDataFlow flow = eRender;
     DWORD state{};
+    // Hardware properties, separate from the friendly name or the user's menu label.
+    std::wstring description, containerId, controller;
+    bool hdmi = false;
 };
 std::vector<AudioDevice> audioDevices(EDataFlow flow);
+std::map<std::wstring, std::wstring> reconnectAudioChoices(Config &config,
+                                                           const std::vector<AudioDevice> &devices);
 std::wstring defaultAudio(EDataFlow flow, ERole role = eMultimedia);
 void setDefaultAudio(const std::wstring &id, EDataFlow flow, bool calls);
 bool audioAvailable(const std::vector<AudioDevice> &devices, const std::wstring &id);

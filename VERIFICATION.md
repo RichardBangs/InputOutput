@@ -1,8 +1,8 @@
-# Verification record — 25 September 2026
+# Verification record — 26 September 2026
 
 Build: InputOutput 0.1.0, Windows x64, native C++20 using LLVM-MinGW 20260616.
 
-- 22 automated tests passed, including Unicode and binary settings round trips, truncated/corrupt files, mode-index validation, monitor identity remapping, clone groups, constrained source routing, atomic backups, recovery decisions, automatic completion after display verification, and a separate recovery process's acknowledgement and exit.
+- 39 automated tests passed, including Unicode and binary settings round trips, truncated/corrupt files, mode-index validation, monitor identity remapping, clone groups, constrained source routing, atomic backups, recovery decisions, automatic completion after display verification, a separate recovery process's acknowledgement and exit, and conservative HDMI endpoint reconnection.
 - The executable is approximately 2 MiB; the portable ZIP also includes the README screenshots and detailed usage guide.
 - Import inspection found only Windows system DLLs and Windows' built-in Universal C Runtime.
 - Read-only discovery found the current two MSI monitors, Audioengine speakers, Arctis headphones and microphone, and the LG TV's disconnected HDMI endpoint.
@@ -22,4 +22,8 @@ Build: InputOutput 0.1.0, Windows x64, native C++20 using LLVM-MinGW 20260616.
 - The README's Settings images were recaptured as lossless 1390 × 710 PNGs and displayed at 695 pixels wide for 2× pixel density. Both were inspected for clean text and correct content. README image paths and the PNG packaging script's PowerShell syntax were checked.
 - The README now leads with a lossless capture of the real tray switcher above the Windows taskbar, with the app's tray icon shown alongside its caption. The direct `--popup` command opened the running app's switcher; the capture shows the current display, output and microphone choices without changing any device. All 22 automated tests passed, and the user's settings file stayed unchanged through the update.
 
-The remaining hardware acceptance checks are listed in TESTING.md: real display transitions staying applied beyond 35 seconds, audible output routing, microphone routing, HDMI reconnection, multi-screen DPI behavior, and Windows sign-in startup.
+- The LG audio availability bug was reproduced read-only: the saved "3 - LG TV SSCR2" endpoint was disconnected while a different "2 - LG TV SSCR2" endpoint was active. The repaired app matched their hardware container, controller and normalized device description, making the existing saved choice available. This was verified against the live TV and then applied by the app in an isolated copy of the user's settings, retaining the original file as its backup.
+- HDMI regression tests cover repeated simulated disconnect/reconnect cycles, preserved menu names/order/visibility/fallbacks, disabled endpoints, missing metadata, different hardware, ambiguous active matches and conflicting saved choices. The native UI checks passed again for all Settings pages, the tray, dismissal while busy, and independent window scaling. No audio or display selection was changed during these checks; an actual TV power cycle and audible routing remain user acceptance checks.
+- After replacing and restarting the local executable, the live tray's LG entry was verified enabled. The saved configuration exactly matched the migration tested in isolation, a second diagnostic found no further migration needed, and the audio output and microphone defaults matched their values before the update.
+
+The remaining hardware acceptance checks are listed in TESTING.md: real display transitions staying applied beyond 35 seconds, audible output routing, microphone routing, HDMI power cycles, multi-screen DPI behavior, and Windows sign-in startup.

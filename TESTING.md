@@ -24,6 +24,7 @@ Switch to each saved display preset, including a newly captured or updated one, 
 - Switch from the TV to the monitors while headphones are selected: headphones should stay selected.
 - Switch away from the TV while TV speakers are selected: the configured available fallback should be used, or Windows chooses an output if no fallback is configured.
 - Disconnect a configured audio device: its saved entry should remain visible but disabled. Reconnect it and check that it becomes available again.
+- Turn the LG TV off and on, then enable its display if needed. Its existing saved audio choice should become selectable, even if Windows changes the numeric prefix of its device name. Check both with the tray panel open and after reopening it, then select TV audio and confirm sound. Names, menu order and any TV fallback selection should survive an app restart.
 - Change the default device in Windows: the app should show the actual current device when reopened.
 - Close Settings: the app should remain in the tray. Reopen Settings and verify names, selected devices, order, and fallback settings survived.
 - Exit and reopen the app. Then sign out and back in when convenient to check startup.
